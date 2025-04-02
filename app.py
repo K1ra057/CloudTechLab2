@@ -1,31 +1,35 @@
 from flask import Flask, jsonify, request, send_from_directory
+from flask_cors import CORS  # Импортируем библиотеку CORS для Flask
 import os
 
 app = Flask(__name__)
 
-# Тимчасове сховище даних (список машин)
+# Включаем поддержку CORS для всех источников
+CORS(app)
+
+# Временное хранилище данных (список машин)
 cars = [
     {"id": 1, "brand": "Toyota", "model": "Corolla", "year": 2020},
     {"id": 2, "brand": "Honda", "model": "Civic", "year": 2019},
 ]
 
-# Головна сторінка (віддає HTML-файл)
+# Главная страница (отдает HTML-файл)
 @app.route("/")
 def index():
     return send_from_directory(os.path.dirname(__file__), "index.html")
 
-# Отримати список всіх машин
+# Получить список всех машин
 @app.route("/cars", methods=["GET"])
 def get_cars():
     return jsonify(cars)
 
-# Отримати конкретну машину за ID
+# Получить конкретную машину по ID
 @app.route("/cars/<int:car_id>", methods=["GET"])
 def get_car(car_id):
     car = next((c for c in cars if c["id"] == car_id), None)
     return jsonify(car) if car else (jsonify({"error": "Car not found"}), 404)
 
-# Додати нову машину
+# Добавить новую машину
 @app.route("/cars", methods=["POST"])
 def add_car():
     data = request.json
@@ -38,7 +42,7 @@ def add_car():
     cars.append(new_car)
     return jsonify(new_car), 201
 
-# Оновити дані машини
+# Обновить данные машины
 @app.route("/cars/<int:car_id>", methods=["PUT"])
 def update_car(car_id):
     data = request.json
@@ -48,7 +52,7 @@ def update_car(car_id):
         return jsonify(car)
     return jsonify({"error": "Car not found"}), 404
 
-# Видалити машину
+# Удалить машину
 @app.route("/cars/<int:car_id>", methods=["DELETE"])
 def delete_car(car_id):
     global cars
