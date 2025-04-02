@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            max-width: 600px;
+            margin: auto;
+            background-color: #f4f4f4;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        input {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 8px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .car-item {
+            background: white;
+            padding: 10px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 5px;
+        }
+        .edit-btn, .delete-btn {
+            margin-left: 10px;
+            padding: 5px 10px;
+            cursor: pointer;
+            border: none;
+            color: white;
+        }
+        .edit-btn { background-color: #ffc107; }
+        .edit-btn:hover { background-color: #e0a800; }
+        .delete-btn { background-color: #dc3545; }
+        .delete-btn:hover { background-color: #c82333; }
+    </style>
+</head>
+<body>
+    <h1>Car Management</h1>
+
+    <h2>Add a Car</h2>
+    <input type="text" id="brand" placeholder="Brand">
+    <input type="text" id="model" placeholder="Model">
+    <input type="number" id="year" placeholder="Year">
+    <button onclick="addCar()">Add Car</button>
+
+    <h2>Car List</h2>
+    <ul id="car-list"></ul>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:5000/cars';
+
+        async function fetchCars() {
+            const response = await fetch(API_URL);
+            const cars = await response.json();
+            const carList = document.getElementById('car-list');
+            carList.innerHTML = '';
+            cars.forEach(car => {
+                const li = document.createElement('li');
+                li.className = 'car-item';
+
+                li.innerHTML = `${car.brand} ${car.model} (${car.year}) ` +
+                    `<button class='edit-btn' onclick='editCar(${car.id})'>Edit</button>` +
+                    `<button class='delete-btn' onclick='deleteCar(${car.id})'>Delete</button>`;
+
+                carList.appendChild(li);
+            });
+        }
+
+        async function addCar() {
+            const brand = document.getElementById('brand').value;
+            const model = document.getElementById('model').value;
+            const year = document.getElementById('year').value;
+
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ brand, model, year })
+            });
+            fetchCars();
+        }
+
+        async function editCar(id) {
+            const brand = prompt("Enter new brand:");
+            const model = prompt("Enter new model:");
+            const year = prompt("Enter new year:");
+            if (!brand || !model || !year) return;
+
+            await fetch(`${API_URL}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ brand, model, year })
+            });
+            fetchCars();
+        }
+
+        async function deleteCar(id) {
+            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            fetchCars();
+        }
+
+        fetchCars();
+    </script>
+</body>
+</html>
