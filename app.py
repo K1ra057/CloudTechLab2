@@ -1,26 +1,27 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
 import os
-import json
 
 app = Flask(__name__)
 CORS(app)
 
-DATA_FILE = "cars.json"
+# Подключение к Railway MySQL
+app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:prhFZETaRWzNFGMcYAyClmmhdinUsKYv@gondola.proxy.rlwy.net:17227/Xmara"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Загрузка из файла
-def load_cars():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    return []
+db = SQLAlchemy(app)
 
-# Сохранение в файл
-def save_cars():
-    with open(DATA_FILE, "w") as f:
-        json.dump(cars, f, indent=2)
+# Модель машины
+class Car(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    brand = db.Column(db.String(50), nullable=False)
+    model = db.Column(db.String(50), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
 
-cars = load_cars()
+# Создание таблицы, если её нет
+with app.app_context():
+    db.create_all()
 
 @app.route("/")
 def index():
@@ -28,41 +29,61 @@ def index():
 
 @app.route("/cars", methods=["GET"])
 def get_cars():
-    return jsonify(cars)
+    cars = Car.query.all()
+    return jsonify([{
+        "id": c.id,
+        "brand": c.brand,
+        "model": c.model,
+        "year": c.year
+    } for c in cars])
 
 @app.route("/cars/<int:car_id>", methods=["GET"])
 def get_car(car_id):
-    car = next((c for c in cars if c["id"] == car_id), None)
-    return jsonify(car) if car else (jsonify({"error": "Car not found"}), 404)
+    car = Car.query.get(car_id)
+    return jsonify({
+        "id": car.id,
+        "brand": car.brand,
+        "model": car.model,
+        "year": car.year
+    }) if car else (jsonify({"error": "Car not found"}), 404)
 
 @app.route("/cars", methods=["POST"])
 def add_car():
     data = request.json
-    new_car = {
-        "id": max([c["id"] for c in cars], default=0) + 1,
-        "brand": data.get("brand"),
-        "model": data.get("model"),
-        "year": data.get("year"),
-    }
-    cars.append(new_car)
-    save_cars()
-    return jsonify(new_car), 201
+    car = Car(brand=data["brand"], model=data["model"], year=data["year"])
+    db.session.add(car)
+    db.session.commit()
+    return jsonify({
+        "id": car.id,
+        "brand": car.brand,
+        "model": car.model,
+        "year": car.year
+    }), 201
 
 @app.route("/cars/<int:car_id>", methods=["PUT"])
 def update_car(car_id):
+    car = Car.query.get(car_id)
+    if not car:
+        return jsonify({"error": "Car not found"}), 404
     data = request.json
-    car = next((c for c in cars if c["id"] == car_id), None)
-    if car:
-        car.update(data)
-        save_cars()
-        return jsonify(car)
-    return jsonify({"error": "Car not found"}), 404
+    car.brand = data.get("brand", car.brand)
+    car.model = data.get("model", car.model)
+    car.year = data.get("year", car.year)
+    db.session.commit()
+    return jsonify({
+        "id": car.id,
+        "brand": car.brand,
+        "model": car.model,
+        "year": car.year
+    })
 
 @app.route("/cars/<int:car_id>", methods=["DELETE"])
 def delete_car(car_id):
-    global cars
-    cars = [c for c in cars if c["id"] != car_id]
-    save_cars()
+    car = Car.query.get(car_id)
+    if not car:
+        return jsonify({"error": "Car not found"}), 404
+    db.session.delete(car)
+    db.session.commit()
     return jsonify({"message": "Car deleted"})
 
 if __name__ == "__main__":
