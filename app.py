@@ -13,7 +13,7 @@ cars = [
     {"id": 2, "brand": "Honda", "model": "Civic", "year": 2019},
 ]
 
-# Главная страница (отдает HTML-файл)
+
 @app.route("/")
 def index():
     return send_from_directory(os.path.dirname(__file__), "index.html")
@@ -29,7 +29,7 @@ def get_car(car_id):
     car = next((c for c in cars if c["id"] == car_id), None)
     return jsonify(car) if car else (jsonify({"error": "Car not found"}), 404)
 
-# Добавить новую машину
+
 @app.route("/cars", methods=["POST"])
 def add_car():
     data = request.json
