@@ -1,125 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Car Management</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            padding: 20px;
-            max-width: 600px;
-            margin: auto;
-            background-color: #f4f4f4;
-        }
-        h1, h2 {
-            text-align: center;
-        }
-        input {
-            display: block;
-            width: 100%;
-            margin: 10px 0;
-            padding: 8px;
-        }
-        button {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
-            width: 100%;
-        }
-        button:hover {
-            background-color: #218838;
-        }
-        .car-item {
-            background: white;
-            padding: 10px;
-            margin: 10px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-radius: 5px;
-        }
-        .edit-btn, .delete-btn {
-            margin-left: 10px;
-            padding: 5px 10px;
-            cursor: pointer;
-            border: none;
-            color: white;
-        }
-        .edit-btn { background-color: #ffc107; }
-        .edit-btn:hover { background-color: #e0a800; }
-        .delete-btn { background-color: #dc3545; }
-        .delete-btn:hover { background-color: #c82333; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Car Management</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+      background-color: #f4f4f4;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    input {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 8px;
+    }
+    button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    .car-item {
+      background: white;
+      padding: 10px;
+      margin: 10px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 5px;
+    }
+    .edit-btn, .delete-btn {
+      margin-left: 10px;
+      padding: 5px 10px;
+      cursor: pointer;
+      border: none;
+      color: white;
+    }
+    .edit-btn { background-color: #ffc107; }
+    .edit-btn:hover { background-color: #e0a800; }
+    .delete-btn { background-color: #dc3545; }
+    .delete-btn:hover { background-color: #c82333; }
+
+    .auth-section {
+      margin-bottom: 30px;
+      padding: 15px;
+      background-color: white;
+      border-radius: 5px;
+    }
+  </style>
 </head>
 <body>
-    <h1>Car Management</h1>
+  <h1>Car Management</h1>
 
-    <h2>Add a Car</h2>
-    <input type="text" id="brand" placeholder="Brand">
-    <input type="text" id="model" placeholder="Model">
-    <input type="number" id="year" placeholder="Year">
-    <button onclick="addCar()">Add Car</button>
+  <div class="auth-section">
+    <h2>🔐 Реєстрація</h2>
+    <input type="text" id="reg-login" placeholder="Логін">
+    <input type="password" id="reg-password" placeholder="Пароль">
+    <button onclick="register()">Зареєструватися</button>
 
-    <h2>Car List</h2>
-    <ul id="car-list"></ul>
+    <h2>➡️ Вхід</h2>
+    <input type="text" id="login-login" placeholder="Логін">
+    <input type="password" id="login-password" placeholder="Пароль">
+    <button onclick="login()">Увійти</button>
+    <p id="auth-status" style="text-align: center; color: green;"></p>
+  </div>
 
-    <script>
-const API_URL = 'https://cloudtechlab2.onrender.com/cars';
+  <h2>➕ Додати машину</h2>
+  <input type="text" id="brand" placeholder="Brand">
+  <input type="text" id="model" placeholder="Model">
+  <input type="number" id="year" placeholder="Year">
+  <button onclick="addCar()">Add Car</button>
 
-        async function fetchCars() {
-            const response = await fetch(API_URL);
-            const cars = await response.json();
-            const carList = document.getElementById('car-list');
-            carList.innerHTML = '';
-            cars.forEach(car => {
-                const li = document.createElement('li');
-                li.className = 'car-item';
+  <h2>📋 Список машин</h2>
+  <ul id="car-list"></ul>
 
-                li.innerHTML = `${car.brand} ${car.model} (${car.year}) ` +
-                    `<button class='edit-btn' onclick='editCar(${car.id})'>Edit</button>` +
-                    `<button class='delete-btn' onclick='deleteCar(${car.id})'>Delete</button>`;
+  <script>
+    const BASE_URL = 'https://cloudtechlab2.onrender.com';
+    const API_CARS = `${BASE_URL}/cars`;
+    const API_REGISTER = `${BASE_URL}/register`;
+    const API_LOGIN = `${BASE_URL}/login`;
 
-                carList.appendChild(li);
-            });
-        }
+    let isAuthenticated = false;
 
-        async function addCar() {
-            const brand = document.getElementById('brand').value;
-            const model = document.getElementById('model').value;
-            const year = document.getElementById('year').value;
+    async function register() {
+      const login = document.getElementById('reg-login').value;
+      const password = document.getElementById('reg-password').value;
 
-            await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ brand, model, year })
-            });
-            fetchCars();
-        }
+      const res = await fetch(API_REGISTER, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login, password })
+      });
 
-        async function editCar(id) {
-            const brand = prompt("Enter new brand:");
-            const model = prompt("Enter new model:");
-            const year = prompt("Enter new year:");
-            if (!brand || !model || !year) return;
+      const data = await res.json();
+      alert(data.message || data.error);
+    }
 
-            await fetch(`${API_URL}/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ brand, model, year })
-            });
-            fetchCars();
-        }
+    async function login() {
+      const login = document.getElementById('login-login').value;
+      const password = document.getElementById('login-password').value;
 
-        async function deleteCar(id) {
-            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-            fetchCars();
-        }
+      const res = await fetch(API_LOGIN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login, password })
+      });
 
-        fetchCars();
-    </script>
+      const data = await res.json();
+      if (res.ok) {
+        isAuthenticated = true;
+        document.getElementById('auth-status').innerText = "✅ Успішний вхід!";
+      } else {
+        alert(data.error || "Невідомо");
+      }
+    }
+
+    async function fetchCars() {
+      const response = await fetch(API_CARS);
+      const cars = await response.json();
+      const carList = document.getElementById('car-list');
+      carList.innerHTML = '';
+      cars.forEach(car => {
+        const li = document.createElement('li');
+        li.className = 'car-item';
+
+        li.innerHTML = `${car.brand} ${car.model} (${car.year}) ` +
+          `<button class='edit-btn' onclick='editCar(${car.id})'>Edit</button>` +
+          `<button class='delete-btn' onclick='deleteCar(${car.id})'>Delete</button>`;
+
+        carList.appendChild(li);
+      });
+    }
+
+    async function addCar() {
+      if (!isAuthenticated) {
+        alert("Будь ласка, увійдіть перед додаванням машини!");
+        return;
+      }
+
+      const brand = document.getElementById('brand').value;
+      const model = document.getElementById('model').value;
+      const year = document.getElementById('year').value;
+
+      await fetch(API_CARS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand, model, year })
+      });
+      fetchCars();
+    }
+
+    async function editCar(id) {
+      const brand = prompt("Enter new brand:");
+      const model = prompt("Enter new model:");
+      const year = prompt("Enter new year:");
+      if (!brand || !model || !year) return;
+
+      await fetch(`${API_CARS}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand, model, year })
+      });
+      fetchCars();
+    }
+
+    async function deleteCar(id) {
+      await fetch(`${API_CARS}/${id}`, { method: 'DELETE' });
+      fetchCars();
+    }
+
+    fetchCars();
+  </script>
 </body>
 </html>

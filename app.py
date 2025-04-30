@@ -1,29 +1,43 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+import hashlib
+import time
 import os
 
 app = Flask(__name__)
 CORS(app)
 
-# Подключение к базе данных MySQL (указываем URI для подключения через SQLAlchemy)
+# Параметри бази даних
 app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:prhFZETaRWzNFGMcYAyClmmhdinUsKYv@gondola.proxy.rlwy.net:17227/Xmara"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
-# Определяем модель для таблицы cars
+# ======== МОДЕЛІ =========
+
 class Car(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     brand = db.Column(db.String(50), nullable=False)
     model = db.Column(db.String(50), nullable=False)
     year = db.Column(db.Integer, nullable=False)
 
-    def __repr__(self):
-        return f"<Car {self.brand} {self.model}>"
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    login = db.Column(db.String(50), unique=True, nullable=False)
+    password_hash = db.Column(db.String(64), nullable=False)
+    failed_attempts = db.Column(db.Integer, default=0)
+    block_until = db.Column(db.Float, default=0)  # час у секундах
 
-# Создание таблиц, если их нет
+# Створення таблиць
 with app.app_context():
     db.create_all()
+
+# ======== ХЕЛПЕРИ =========
+
+def hash_password(login, password):
+    return hashlib.sha256((login + password).encode()).hexdigest()
+
+# ======== МАРШРУТИ =========
 
 @app.route("/")
 def index():
@@ -31,15 +45,8 @@ def index():
 
 @app.route("/cars", methods=["GET"])
 def get_cars():
-    cars = Car.query.all()  # Получаем все записи из таблицы
+    cars = Car.query.all()
     return jsonify([{"id": car.id, "brand": car.brand, "model": car.model, "year": car.year} for car in cars])
-
-@app.route("/cars/<int:car_id>", methods=["GET"])
-def get_car(car_id):
-    car = Car.query.get(car_id)  # Получаем одну машину по ID
-    if car:
-        return jsonify({"id": car.id, "brand": car.brand, "model": car.model, "year": car.year})
-    return jsonify({"error": "Car not found"}), 404
 
 @app.route("/cars", methods=["POST"])
 def add_car():
@@ -50,8 +57,15 @@ def add_car():
         year=data.get("year")
     )
     db.session.add(new_car)
-    db.session.commit()  # Сохраняем новый объект в БД
+    db.session.commit()
     return jsonify({"id": new_car.id, "brand": new_car.brand, "model": new_car.model, "year": new_car.year}), 201
+
+@app.route("/cars/<int:car_id>", methods=["GET"])
+def get_car(car_id):
+    car = Car.query.get(car_id)
+    if car:
+        return jsonify({"id": car.id, "brand": car.brand, "model": car.model, "year": car.year})
+    return jsonify({"error": "Car not found"}), 404
 
 @app.route("/cars/<int:car_id>", methods=["PUT"])
 def update_car(car_id):
@@ -73,6 +87,54 @@ def delete_car(car_id):
         db.session.commit()
         return jsonify({"message": "Car deleted"})
     return jsonify({"error": "Car not found"}), 404
+
+# ======== АУТЕНТИФІКАЦІЯ =========
+
+@app.route("/register", methods=["POST"])
+def register_user():
+    data = request.json
+    login = data.get("login")
+    password = data.get("password")
+
+    if User.query.filter_by(login=login).first():
+        return jsonify({"error": "Користувач вже існує"}), 400
+
+    user = User(login=login, password_hash=hash_password(login, password))
+    db.session.add(user)
+    db.session.commit()
+    return jsonify({"message": "Реєстрація успішна!"})
+
+@app.route("/login", methods=["POST"])
+def login_user():
+    data = request.json
+    login = data.get("login")
+    password = data.get("password")
+    user = User.query.filter_by(login=login).first()
+
+    if not user:
+        return jsonify({"error": "Користувача не знайдено"}), 404
+
+    now = time.time()
+    if user.block_until > now:
+        remaining = int(user.block_until - now)
+        return jsonify({"error": f"Заблоковано. Зачекайте {remaining} сек."}), 403
+
+    if user.password_hash == hash_password(login, password):
+        user.failed_attempts = 0
+        db.session.commit()
+        return jsonify({"message": "Аутентифікація пройдена!"})
+    else:
+        user.failed_attempts += 1
+        if user.failed_attempts >= 3:
+            user.block_until = now + 60
+            user.failed_attempts = 0
+            db.session.commit()
+            return jsonify({"error": "Заблоковано на 60 секунд після 3 спроб"}), 403
+        else:
+            db.session.commit()
+            return jsonify({"error": "Невірний пароль", "attempts_left": 3 - user.failed_attempts}), 401
+
+# ======== Запуск =========
 
 if __name__ == "__main__":
     app.run(debug=True)
