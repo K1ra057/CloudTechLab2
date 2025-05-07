@@ -8,8 +8,14 @@ import os
 app = Flask(__name__)
 CORS(app)
 
- #Параметри бази даних
-app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://Dmytro:1234@localhost/Xmara"
+# Параметри бази даних
+MYSQL_HOST = 'localhost'
+MYSQL_USER = 'Dmytro'
+MYSQL_PASSWORD = '1234'
+MYSQL_DB = 'Xmara'
+MYSQL_PORT = 3306
+
+app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
