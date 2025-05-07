@@ -8,8 +8,8 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-# Параметри бази даних
-app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:prhFZETaRWzNFGMcYAyClmmhdinUsKYv@gondola.proxy.rlwy.net:17227/Xmara"
+ #Параметри бази даних
+app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://Dmytro:1234@localhost/Xmara"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
@@ -137,4 +137,4 @@ def login_user():
 # ======== Запуск =========
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0",port=500, debug=True)
